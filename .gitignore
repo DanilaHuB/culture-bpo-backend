@@ -18,4 +18,11 @@ media/
 .DS_Store
 Thumbs.db
 
-settings.py 
+settings.py .env
+.env.txt
+*.env
+
+# Environment variables
+.env
+.env.txt
+*.env
