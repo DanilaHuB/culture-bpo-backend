@@ -40,10 +40,10 @@ class Location(models.Model):
 
 
 class EventManager(models.Manager):
-    def published(self):              # Возвращает только опубликованные события (дата которых ещё не прошла)
+    def published(self):             
         return self.filter(status="published", date__gte=timezone.now())                    
 
-    def upcoming(self):            # Возвращает будущие события, отсортированные по дате
+    def upcoming(self):         
         now = timezone.now()      
         return self.filter(date__gte=now).order_by("date")
 
@@ -70,7 +70,19 @@ class Event(models.Model):
     class Meta:
         ordering = ["-date"]
         constraints = [
-            models.UniqueConstraint(fields=["title", "date"], name="uniq_event_title_date")
+            models.UniqueConstraint(
+                fields=["title", "date", "location"],   
+                name="uniq_event_title_date_location"
+            ),
+            models.UniqueConstraint(
+                fields=["title", "date"],
+                condition=models.Q(is_online=True), 
+                name="uniq_online_event_title_date"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["title", "date"]),
+            models.Index(fields=["date"]),
         ]
 
     def __str__(self):
@@ -82,12 +94,12 @@ class Event(models.Model):
         if self.date < timezone.now() and self.status != "cancelled":
             raise models.ValidationError("Ошибка! Дата события не может быть в прошлом!")
 
-    def save(self, *args, **kwargs):       # Переопределяем save — если черновик и дата уже в прошлом, сдвигаем дату на неделю вперёд
+    def save(self, *args, **kwargs):       
         if self.status == "draft" and self.date < timezone.now():
             self.date = timezone.now() + timezone.timedelta(days=7)
         super().save(*args, **kwargs)
 
-    @property     # здесь свойство - средний рейтинг по отзывам
+    @property    
     def avg_rating(self):
         r = self.reviews.aggregate(models.Avg("rating"))
         return round(r["rating__avg"], 2) if r["rating__avg"] else None

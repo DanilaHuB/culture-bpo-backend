@@ -23,7 +23,7 @@ User = get_user_model()
 
 class IsEventOrganizer(permissions.BasePermission):
 
-    # !организатор события не всегда админ, у юзера есть флаг is_organizer
+    
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_organizer)
 
@@ -35,13 +35,14 @@ class UserRegisterView(APIView):
         serializer = UserSerializator(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            user.set_password(serializer.validated_data['пароль'])
+        
+            user.set_password(serializer.validated_data['password'])
             user.save()
 
             logger.info(f"Пользователь зарегистрирован: {user.username}")
 
             return Response(
-                {"ok": True, "пользовтаель": UserSerializator(user).data},
+                {"ok": True, "пользователь": UserSerializator(user).data},
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -95,17 +96,11 @@ class CreateReviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # Делаю один отзыв на конкретное событие от пользвт.
-        event_id = request.data.get("event")
-        if Review.objects.filter(user=request.user, event_id=event_id).exists():
-            return Response({"error": "Отзыв уже оставлен"}, status=status.HTTP_400_BAD_REQUEST)
-
-        serializer = ReviewSerializator(data=request.data)
+        serializer = ReviewSerializator(data=request.data, context={'request': request})
         if serializer.is_valid():
-            review = serializer.save(user=request.user)
-            return Response(ReviewSerializator(review).data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            review = serializer.save()  
+            return Response(ReviewSerializator(review).data, status=201)
+        return Response(serializer.errors, status=400)
 
 
 class CreateEventView(generics.CreateAPIView):

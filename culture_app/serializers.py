@@ -16,7 +16,7 @@ class UserSerializator(serializers.ModelSerializer):
             raise serializers.ValidationError("В имени пользователя должны быть только буквы и цифры.")
         return value
 
-    def validate_email(self, value):          # Стандартный Джанго валидатор для проверки email
+    def validate_email(self, value):        
         validator = EmailValidator()
         validator(value)
         return value
@@ -76,13 +76,18 @@ class FavoriteSerializator(serializers.ModelSerializer):
         return Favorite.objects.create(**validated_data)
 
 class ReviewSerializator(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
+   
     event = serializers.PrimaryKeyRelatedField(queryset=Event.objects.all())
 
     class Meta:
         model = Review
         fields = ['id', 'user', 'event', 'text', 'rating', 'created_at']
-
+        read_only_fields = ['created_at']
+        
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+    
     def validate_rating(self, value):
         if value < 1 or value > 5:
             raise serializers.ValidationError("Рейтинг только от 1 до 5!")
